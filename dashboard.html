@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Trend Visualization Engine</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
+
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-tight text-emerald-400">Project #1: Sales Trend Visualization</h1>
+            <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-3 py-1 rounded-full font-medium">
+                Live Data Pipeline
+            </span>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6 space-y-6">
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 shadow-xl">
+                <p class="text-sm font-medium text-slate-400 uppercase tracking-wider">Total Revenue</p>
+                <h3 id="kpi-revenue" class="text-3xl font-bold text-slate-100 mt-2">Loading...</h3>
+            </div>
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 shadow-xl">
+                <p class="text-sm font-medium text-slate-400 uppercase tracking-wider">Units Distributed</p>
+                <h3 id="kpi-units" class="text-3xl font-bold text-slate-100 mt-2">Loading...</h3>
+            </div>
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 shadow-xl">
+                <p class="text-sm font-medium text-slate-400 uppercase tracking-wider">Avg Transaction Value</p>
+                <h3 id="kpi-aov" class="text-3xl font-bold text-slate-100 mt-2">Loading...</h3>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 shadow-xl">
+                <h4 class="text-base font-semibold text-slate-200 mb-4">Monthly Revenue Velocity Trend</h4>
+                <div class="relative h-80 w-full">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 shadow-xl">
+                <h4 class="text-base font-semibold text-slate-200 mb-4">Revenue Breakdown by Product Category</h4>
+                <div class="relative h-80 w-full">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        async function buildDashboardUI() {
+            try {
+                // Fetch calculated payload directly from our FastAPI endpoint
+                const response = await fetch('/api/analytics');
+                const data = await response.json();
+
+                if (data.error) {
+                    console.error("Pipeline breakdown:", data.error);
+                    return;
+                }
+
+                // 1. Map Data Directly Into KPI Counters
+                document.getElementById('kpi-revenue').innerText = '₹' + data.kpis.total_revenue.toLocaleString('en-IN');
+                document.getElementById('kpi-units').innerText = data.kpis.total_units_sold.toLocaleString('en-IN') + ' Units';
+                document.getElementById('kpi-aov').innerText = '₹' + data.kpis.average_order_value.toLocaleString('en-IN');
+
+                // 2. Render Timeline Velocity Line Graph
+                const ctxLine = document.getElementById('timelineChart').getContext('2d');
+                new Chart(ctxLine, {
+                    type: 'line',
+                    data: {
+                        labels: data.charts.timeline_months,
+                        datasets: [{
+                            label: 'Monthly Revenue (₹)',
+                            data: data.charts.timeline_revenue,
+                            borderColor: '#34d399', // Tailwind Emerald-400
+                            backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                            x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                        }
+                    }
+                });
+
+                // 3. Render Product Category Contribution Bar Chart
+                const ctxBar = document.getElementById('categoryChart').getContext('2d');
+                new Chart(ctxBar, {
+                    type: 'bar',
+                    data: {
+                        labels: data.charts.category_labels,
+                        datasets: [{
+                            label: 'Total Category Revenue (₹)',
+                            data: data.charts.category_data,
+                            backgroundColor: '#38bdf8', // Tailwind Sky-400
+                            borderRadius: 8,
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                            x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                        }
+                    }
+                });
+
+            } catch (err) {
+                console.error("Failed handling visualization assembly:", err);
+            }
+        }
+
+        // Initialize engine script upon page readiness
+        document.addEventListener('DOMContentLoaded', buildDashboardUI);
+    </script>
+</body>
+</html>
